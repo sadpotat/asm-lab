@@ -1,0 +1,89 @@
+.MODEL SMALL
+.STACK 100H
+.DATA
+MSG1 DB 'ENTER CENTS (0-99): $'
+MSG2 DB 0DH, 0AH, 'YOU ENTERED '
+HD DB ?,' HALF DOLLAR, '
+Q DB ?,' QUARTER, '
+D DB ?,' DIMES, '
+N DB ?,' NICKEL AND '
+P DB ?,' PENNIES$'
+DECI DB 10D
+.CODE
+MAIN PROC
+    MOV AX, @DATA
+    MOV DS, AX
+    
+    LEA DX, MSG1
+    MOV AH, 9
+    INT 21H            ;DISPLAYS MSG1
+    
+    MOV AH, 1
+    CALL INPUTDEC
+    MOV AX, BX         ;STORES AS DIVIDEND
+    
+    MOV CX, 50D
+    DIV CX             ;QUOTIENT=NO. OF HALF DOLLARS
+    MOV HD, AL
+    OR HD, 30H         ;CONVERTS TO ASCII
+    MOV AX, DX         ;REMAINDER IS DIVIDED AGAIN
+    XOR DX, DX
+    MOV CX, 25D        
+    DIV CX             ;QUOTIENT=NO. OF QUARTERS
+    MOV Q, AL
+    OR Q, 30H
+    MOV AX, DX
+    XOR DX, DX
+    MOV CX, 10D
+    DIV CX             ;QUOTIENT=NO. OF DIMES
+    MOV D, AL
+    OR D, 30H
+    MOV AX, DX
+    XOR DX, DX
+    MOV CX, 5D
+    DIV CX             ;QUOTIENT=NO. OF NICKELS
+    MOV N, AL
+    OR N, 30H
+    MOV P, DL          ;REMAINDER=NO. OF PENNIES
+    OR P, 30H
+    
+    LEA DX, MSG2
+    MOV AH, 9
+    INT 21H            ;DISPLAYS MSG2
+     
+    MOV AX, 4CH
+    INT 21H
+    MAIN ENDP
+
+INPUTDEC PROC          ;PROC FOR GETTING DECIMAL INPUT IN HEX
+    PUSH AX
+    PUSH CX
+    PUSH DX
+    XOR BX, BX
+    
+    INP:
+    XOR CX, CX         ;CLEARS CX FOR NEXT INPUT
+    MOV AH, 1
+    INT 21H            ;TAKES INPUT
+    CMP AL, 0DH        ;CHECKS FOR CARRIAGE RETURN
+    JE ENDINP          ;CARRIAGE RET MARKS THE END OF THE INTEGER
+    
+    AND AL, 0FH        ;LAST 4BITS ARE ITS BINARY VALUE
+
+    OR CL, AL          ;NEW DIGIT IN CL
+    MOV AX, BX         ;PRECEDING DIGITS ARE
+    MUL DECI             ;MULTIPLIED BY 10D AND
+    ADD AX, CX           ;THE NEW DIGIT IS ADDED
+    XOR BX, BX
+    OR BX, AX          ;BX CONTAINS PRESENT INPUT
+    JMP INP             
+    
+    ENDINP:
+                       ;OUTPUT IN BX
+    POP DX
+    POP CX
+    POP AX
+    RET
+    INPUTDEC ENDP
+
+END MAIN     

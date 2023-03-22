@@ -1,0 +1,118 @@
+.MODEL SMALL
+.STACK 100H
+.DATA
+MSG1 DB 'ENTER TIME IN SECONDS (0-65535): $'
+MSG2 DB 0DH, 0AH, 'YOU ENTERED '
+H DW ?,' HOURS, '
+M DW ?,' MINUTES AND '
+S DW ?,' SECONDS$'
+.CODE
+MAIN PROC
+    MOV AX, @DATA
+    MOV DS, AX
+    
+    LEA DX, MSG1
+    MOV AH, 9
+    INT 21H            ;DISPLAYS MSG1
+    
+    MOV AH, 1
+    CALL INPUTDEC
+    MOV AX, BX         ;STORES AS DIVIDEND
+    
+    MOV CX, 3600D
+    DIV CX             ;QUOTIENT=NO. OF HOURS
+    CALL OUTPUTDEC
+    MOV CX, 8
+    ROL BX, CL         ;REVERSING ORDER OF DIGITS
+    MOV H, BX          ;SINCE A WORD'S LEAST SIGNIFICANT
+                       ;BYTE IS STORED FIRST IN DATA SEG        
+    MOV AX, DX         ;REMAINDER IS DIVIDED AGAIN
+    XOR DX, DX
+    MOV CX, 60D        
+    DIV CX             ;QUOTIENT=NO. OF MINUTES
+    CALL OUTPUTDEC
+    MOV CX, 8
+    ROL BX, CL
+    MOV M, BX
+    MOV AX, DX         ;REMAINDER=NO. OF SECONDS
+    CALL OUTPUTDEC
+    MOV CX, 8
+    ROL BX, CL
+    MOV S, BX          
+        
+    LEA DX, MSG2
+    MOV AH, 9
+    INT 21H            ;DISPLAYS MSG2
+     
+    MOV AX, 4CH
+    INT 21H
+    MAIN ENDP
+
+INPUTDEC PROC          ;PROC FOR GETTING DECIMAL INPUT IN HEX
+    PUSH AX
+    PUSH CX
+    PUSH DX
+    XOR BX, BX
+    
+    
+    INP:
+    MOV DL, 10D
+    XOR CX, CX         ;CLEARS CX FOR NEXT INPUT
+    MOV AH, 1
+    INT 21H            ;TAKES INPUT
+    CMP AL, 0DH        ;CHECKS FOR CARRIAGE RETURN
+    JE ENDINP          ;CARRIAGE RET MARKS THE END OF THE INTEGER
+    
+    AND AL, 0FH        ;LAST 4BITS ARE ITS BINARY VALUE
+
+    OR CL, AL          ;NEW DIGIT IN CL
+    MOV AX, BX         ;PRECEDING DIGITS ARE
+    MUL DX             ;MULTIPLIED BY 10D AND
+    ADD AX, CX         ;THE NEW DIGIT IS ADDED
+    XOR BX, BX
+    OR BX, AX          ;BX CONTAINS PRESENT INPUT
+    JMP INP             
+    
+    ENDINP:
+                       ;OUTPUT IN BX
+    POP DX
+    POP CX
+    POP AX
+    RET
+    INPUTDEC ENDP
+
+OUTPUTDEC PROC         ;PROC FOR CONVERTING HEX TO DECIMAL
+    PUSH AX
+    PUSH CX
+    PUSH DX
+    MOV BX, 10D         
+    XOR CX, CX         ;CLEARS CX TO USE AS COUNTER
+    
+    OP:
+    XOR DX, DX
+    DIV BX             ;HEX INPUT IS DIV BY 10D
+    PUSH DX            ;REMAINDER IS PUSHED INTO STACK
+    INC CX             ;CX COUNTS NO. OF DIGITS IN DECIMAL
+    CMP AX, 0          ;CHECKS IF QUOTIENT=0
+    JNE OP
+    
+    MOV AH, 2
+    XOR BX, BX
+    
+    ASCII:
+    POP DX             ;POPS STORED DIGIT, MSB FIRST
+    OR DL, 30H         ;CONVERTING TO ASCII
+    PUSH CX            ;VALUE SAVED SINCE 
+    MOV CX, 8          ;CX IS ALSO USED FOR LOOP
+    SHL BX, CL
+    OR BL, DL
+    POP CX
+    LOOP ASCII
+                       ;OUTPUT IN BX
+    POP DX
+    POP CX
+    POP AX
+    RET
+    OUTPUTDEC ENDP
+
+END MAIN     
